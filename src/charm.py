@@ -6,9 +6,9 @@
 import logging
 
 import ops
-from charms.operator_libs_linux.v0 import grub
+from charms.operator_libs_linux.v0 import grub, sysctl
 
-from profiles import PRODUCTION_PROFILE, TESTING_PROFILE
+from profiles import Profile
 
 logger = logging.getLogger(__name__)
 
@@ -18,10 +18,12 @@ class OsConfigWorkshopCharm(ops.CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.grub = grub.GrubConfig(self.app.name)
+        self.grub = grub.Config(self.app.name)
+        self.sysctl = sysctl.Config(self.app.name)
 
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.remove, self._on_remove)
 
     def _on_start(self, event: ops.StartEvent):
         """Handle start event."""
@@ -31,11 +33,10 @@ class OsConfigWorkshopCharm(ops.CharmBase):
         """Handle config changed event."""
         profile = self.config["profile"]
 
-        try:
-            self._grub_config(profile=profile)
-        except (grub.ApplyError, grub.ValidationError) as e:
-            logger.error(f"Error setting values on GRUB: {e.message}")
-            self.unit.status = ops.BlockedStatus("GRUB config not possible")
+        configured = self._config(profile=profile)
+
+        if not configured:
+            self.unit.status = ops.BlockedStatus()
             return
 
         self.unit.status = ops.ActiveStatus()
@@ -43,13 +44,38 @@ class OsConfigWorkshopCharm(ops.CharmBase):
     def _on_remove(self, event: ops.RemoveEvent):
         """Handle start event."""
         self.grub.remove()
+        self.sysctl.remove()
 
-    def _grub_config(self, profile: str):
+    def _config(self, profile: str) -> bool:
         """Add sysctl config."""
+        configured = True
         if profile == "production":
-            self.grub.update(config=PRODUCTION_PROFILE)
+            try:
+                self.grub.update(config=Profile.PRODUCTION.value.grub)
+            except (grub.ApplyError, grub.ValidationError) as e:
+                logger.error(f"Error setting GRUB profile values: {e.message}")
+                configured = False
+
+            try:
+                self.sysctl.configure(config=Profile.PRODUCTION.value.sysctl)
+            except sysctl.Error as e:
+                logger.error(f"Error setting sysctl profile values: {e.message}")
+                configured = False
+
         elif profile == "testing":
-            self.grub.update(config=TESTING_PROFILE)
+            try:
+                self.grub.update(config=Profile.TESTING.value.grub)
+            except (grub.ApplyError, grub.ValidationError) as e:
+                logger.error(f"Error setting GRUB profile values: {e.message}")
+                configured = False
+
+            try:
+                self.sysctl.configure(config=Profile.TESTING.value.sysctl)
+            except sysctl.Error as e:
+                logger.error(f"Error setting sysctl profile values: {e.message}")
+                configured = False
+
+        return configured
 
 
 if __name__ == "__main__":  # pragma: nocover
