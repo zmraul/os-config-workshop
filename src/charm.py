@@ -18,7 +18,7 @@ class OsConfigWorkshopCharm(ops.CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.grub = grub.GrubConfig(self.app.name)
+        self.grub = grub.Config(self.app.name)
 
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
