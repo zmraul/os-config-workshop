@@ -1,5 +1,7 @@
 options:
   profile:
-    description: 'Profile representing the scope of deployment, and used to enable high-level customisation of sysconfigs. Allowed values are: “production” and “testing”'
+    description: |
+      Profile representing the scope of deployment, and used to enable high-level customization of
+      sys-configs. Allowed values are: “production” and “testing”
     type: string
     default: testing
