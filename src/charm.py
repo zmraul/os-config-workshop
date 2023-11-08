@@ -7,8 +7,6 @@ import logging
 
 import ops
 
-from profiles import PRODUCTION_PROFILE, TESTING_PROFILE
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,12 +24,17 @@ class OsConfigWorkshopCharm(ops.CharmBase):
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent):
         """Handle config changed event."""
-        profile = self.config['profile']
+        profile = self.config["profile"]
+        self.unit.status = ops.MaintenanceStatus(f"configuring profile '{profile}'")
 
-        if profile == 'production':
+        if profile == "production":
             logger.info("Using PRODUCTION profile")
-        elif profile == 'testing':
+            self.unit.status = ops.ActiveStatus()
+        elif profile == "testing":
             logger.info("Using TESTING profile")
+            self.unit.status = ops.ActiveStatus()
+        else:
+            self.unit.status = ops.BlockedStatus(f"not valid profile '{profile}'")
 
 
 if __name__ == "__main__":  # pragma: nocover
