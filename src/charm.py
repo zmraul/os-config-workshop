@@ -33,9 +33,8 @@ class OsConfigWorkshopCharm(ops.CharmBase):
 
         try:
             self._grub_config(profile=profile)
-        except (grub.ApplyError, grub.ValidationError) as e:
-            logger.error(f"Error setting values on GRUB: {e.message}")
-            self.unit.status = ops.BlockedStatus("GRUB config not possible")
+        except grub.ValidationError as error:
+            self.unit.status = BlockedStatus(f"[{error.key}] {error.message}")
             return
 
         self.unit.status = ops.ActiveStatus()
